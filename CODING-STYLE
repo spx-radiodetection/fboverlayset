@@ -1,0 +1,219 @@
+CODING STYLE
+************
+
+This code will written to follow the GNOME coding style, since a large amount of code is based on
+gstreamer, gst-rtsp-server and glib.
+
+In general coding rules fall into two categories
+
+ 1. Naming - variables, functions, structures, macros
+ 2. Layout - spacing, bracket placement
+
+Naming is a manual process and is described in the following section.
+
+Layout is enforced by use of astyle - a tool that will parse a file and alter its layout to a
+given specification.  By using this tool the focus can be on naming and expression of comments 
+rather than tedious layout consistency.  
+
+No rule presented here is enough to justify writing misleading code, so these are not mandatory.
+The purpose here is to aid maintainability, and justifable exceptions are permitted.
+
+
+Naming
+======
+
+GNOME Namespacing rules are declared here:
+<https://developer.gnome.org/programming-guidelines/stable/namespacing.html.en>
+
+In Summary:
+
+- Functions should use `lower_case_with_underscores`.
+
+- Structures, types and objects should use `CamelCaseWithoutUnderscores`.
+
+- Macros and constants should use `UPPER_CASE_WITH_UNDERSCORES`.
+
+- All symbols should be prefixed with a short (2-4 characters) version of the namespace. This is 
+  shortened purely for ease of typing, but should still be unique.
+
+- All methods of a class should also be prefixed with the class name.
+
+- Non-exported functions that are needed in more than one source file should be prefixed with an 
+  underscore ('_'), and declared in a private header file. For example, _mylib_internal_foo().
+
+For example for the Walbottle module (3 letter prefix `Wbl`)... 
+
+```
+    WblSchema structure
+    WblSchemaClass structure
+    WBL_TYPE_SCHEMA macro
+    WBL_IS_SCHEMA macro
+    wbl_schema_get_type function
+    wbl_schema_new function
+    wbl_schema_load_from_data function
+```
+
+
+Layout
+======
+
+Layout Automation - astyle
+--------------------------
+
+astyle is a tool for automatically applying layout rules.  It "neatens" your code.
+
+The astyle tool was chosen as it is reasonably conservative - allowing for some
+freedom of placement of comments and alignment for variables.  Whilst this could be enforced,
+sometimes it is proper to violate alignment rules to aid clarity - and it undesirable for this to
+result in a fight against a formatting tool.
+
+The version of astyle used: 
+
+    astyle --version
+    Artistic Style Version 2.04
+
+The astyle configuration for this project is:  --mode=c -A3 -s4 -m0 -p -xd -H -U -k3 -W3 -c -z2 -j
+
+And can be used in the following way...
+
+    astyle --options=none --mode=c -A3 -s4 -m0 -p -xd -H -U -k3 -W3 -c -z2 -j -n --recursive "src/*.c" "src/*.h"
+
+Install astyle with `apt-get install astyle`
+
+And help on astyle is here - <http://astyle.sourceforge.net/astyle.html>
+
+
+Coding Layout Rules
+-------------------
+
+The GNOME C Coding Style is declared here:  (we use K&R style not GNU)
+<https://developer.gnome.org/programming-guidelines/stable/c-coding-style.html.en>
+
+Here is a short summary:
+
+- Indenting is 4 characters, and ALWAYS WITH SPACES.  Tabs where absolutely necessary are 8
+  characters.
+
+- UNIX file format only (LF no CR).
+
+- Line lengths should aim to be less than 100 characters, but within reason this rule can be broken
+  for the sake of clarity.
+
+- K&R Style for bracket placement.  For for, do, while, if, switch, the starting braces are on the
+  same line.  For structures, unions, enums, classes, functions starting braces are on the following
+  line.
+
+        void my_function (int *foo, int num_elements)
+        {
+            int i;
+            for (i = 0; i < num_elements; i++) {
+                foo[i] = foo[i] + 42;
+
+                if (foo[i] < 35) {
+                    printf ("Foo!");
+                    foo[i]--;
+                } else {
+                    printf ("Bar!");
+                    foo[i]++;
+                }
+            }
+            summary_function (foo);
+            signal_done();
+        }
+
+  Note the space after function names, but there is no space when there are no parameters.
+
+- Long function declarations must be split on separate lines, with parameter variables vertically 
+  aligned, one per line, and the return type being on a preceding line to the function name.
+
+        void
+        my_function (some_type_t      type,
+                     another_type_t  *a_pointer,
+                     double_ptr_t   **double_pointer,
+                     final_type_t     another_type)
+        {
+            ...
+        }
+
+  However, as a deviation to the GNOME rules, they can also be placed on one line if they are 
+  short.  Note the space after the function name.
+
+        void my_function2 (some_type_t type, another_type_t  *a_pointer)
+        {
+            ...
+        }
+
+- The GNOME style rule to vertically align function definitions in three columns is NOT enforced.
+
+- **DEVIATION FROM GNOME STANDARD** The GNOME style allows single line if statements without brackets in certain cases.
+  For this project our style is *not* to permit them - brackets MUST always be used.
+
+        /* invalid (but permitted under GNOME rules) */
+        if (condition) {
+            if (another_condition)
+                single_statement ();
+            else
+                another_single_statement ();
+        }
+
+        /* valid - imposed by astyle -j option */
+        if (condition) {
+            if (another_condition) {
+                single_statement ();
+            } else {
+                another_single_statement ();
+            }
+        }
+
+- Always put a space before an opening parenthesis but never after.
+
+        if (condition) {            /* valid */
+            do_my_things ();
+        }
+
+        switch (condition) {        /* valid */
+        }
+
+        if(condition)               /* INVALID */
+            do_my_things();
+
+        if ( condition )            /* INVALID */
+            do_my_things ( );
+
+- Switch case statements have case statements as the same indentation as the switch keyword.
+
+        switch (condition) {
+        case FOO:
+            do_foo ();
+            break;
+
+        case BAR:
+            do_bar ();
+            break;
+        }
+
+- Return is not a function, and so the return value should not be in brackets.
+
+        return -1                   /* valid */
+        return (-1)                 /* INVALID */
+
+- Column alignment of variables and members of structures is encouraged to aid readability.
+  Separate type and variable.  Pointers `*` (and references `&` in C++) are attached to variable
+  names.
+
+        GtkOrientation        orientation;
+        GtkWrapAllocationMode mode;
+
+        GtkWrapBoxSpreading   horizontal_spreading;
+        GtkWrapBoxSpreading   vertical_spreading;
+
+        guint16               vertical_spacing;
+        guint16               horizontal_spacing;
+
+        guint16               minimum_line_children;
+        guint16               natural_line_children;
+
+        GList                *children;
+
+  Alignment is not mandatory, but pointer and reference attachment to the variable name is.
+

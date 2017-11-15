@@ -1,0 +1,115 @@
+fboverlayset
+============
+
+This is a command line application to control framebuffer overlays on the iMX6 device.
+
+The iMX6 device has the facility of overlaying pairs of framebuffers and rendering the combined
+imaged (by h/w - the IPU) when outputting to the display device.
+
+         __________________
+        | /dev/fb0         |
+        |   _______________|__          The iMX6 h/w device can overlay framebuffer 1 over
+        |  | /dev/fb1      :  |         framebuffer 0, with image wide or pixel level
+        |  |               :  |         transparency.
+        |  |               :  |
+        |  |               :  |
+        |  |               :  |
+        |__|................  |
+           |                  |
+           |__________________|
+
+This application allows the user to choose if a buffer is overlaid and whether the overlaid buffer
+is combined using a global (image wide) alpha (for RGB images without an alpha channel), or by a
+local (pixel) level alpha (for RGBA with an alpha channel), or by using a colour key (where a
+specific colour is made transparent).
+
+
+BUILDING, INSTALLING fboverlayset
+---------------------------------
+
+For building and installation instructions see the separate INSTALL file.
+
+The License terms are declared in the LICENSE file.
+
+
+Usage
+-----
+
+Help is provided by the -h or --help options
+
+    user@rd-imx6:~# fboverlayset --help
+    Usage:
+      fboverlayset [OPTION...]  - set the overlay characteristics of a framebuffer
+
+    Help Options:
+      -h, --help                     Show help options
+
+    Application Options:
+      --version                      output version
+      -v, --verbose                  be verbose
+      --dry-run                      don't execute
+      -f, --fb=FRAMEBUFFER           framebuffer (mandatory)
+      -g, --gbl-alpha=ALPHA          global alpha (0 - 255)
+      -c, --colour-key=COLOURKEY     colour key (can use hex)
+      -l, --loc-alpha                pixel level alpha
+
+
+There are hardware limitations fb1 can only be overlaid on fb0, fb3 can only be overlaid on fb2.
+
+In order to overlay framebuffers it is good to make sure they are configured the same.  This is
+achieved through fbset.  For example to set fb1 the same as fb0.
+
+    fbset -fb /dev/fb1 -g `fbset -fb /dev/fb0 | sed -n s/geometry//p` \
+                       -t `fbset -fb /dev/fb0 | sed -n s/timings//p`
+
+Choose RGBA by setting the colour depth to 32bits:
+
+    fbset -fb /dev/fb1 -depth 32
+
+You may also need to take the attached displays out of powerdown (screen save):
+
+    # write 0 to wake, 4 to sleep
+    echo 0 > /sys/class/graphics/fb0/blank && echo 0 > /sys/class/graphics/fb1/blank
+
+Then send some images to the framebuffer:
+
+    # using gstreamer to show a jpeg
+    gst-launch-1.0 filesrc location=base.jpg ! jpegdec ! videoconvert ! fbdevsink device=/dev/fb0
+
+    # using gstreamer to show a png (potentially with alpha channel)
+    gst-launch-1.0 filesrc location=overlay.png ! pngdec ! videoconvert ! fbdevsink device=/dev/fb1
+
+(or you could even play a video for the base image)
+
+
+And now for the fboverlayset examples:
+
+    # white transparent, rest semi transparent   (merge)
+    fboverlayset -v -f /dev/fb1 -c 0x80FFFFFF
+
+    # white transparent, rest opaque             (transparency overlay - white->clear)
+    fboverlayset -v -f /dev/fb1 -c 0xFFFFFFFF
+
+    # white transparent, rest transparent        (just fb0)
+    fboverlayset -v -f /dev/fb1 -c 0x00FFFFFF
+
+    # text transparent,  rest opaque             (text cutout - purple text->clear)
+    fboverlayset -v -f /dev/fb1 -c 0xFF323bf3
+
+    # text transparent,  rest transparent        (just fb0)
+    fboverlayset -v -f /dev/fb1 -c 0x00323bf3
+
+    # fb1 alpha channel transparent, rest opaque (transparency overlay)
+    fboverlayset -v -f /dev/fb1 -l
+
+    # semi transparent                           (merge)
+    fboverlayset -v -f /dev/fb1 -g 128
+
+    # fb1 very transparent                       (faint merge)
+    fboverlayset -v -f /dev/fb1 -g 32
+
+    # fb1 almost opaque                          (opaque merge)
+    fboverlayset -v -f /dev/fb1 -g 224
+
+fboverlayset can be called at any point.
+
